@@ -117,6 +117,71 @@ Genre gets the most points (2.0) because it is the strongest signal of who you a
 
 ---
 
+## Musical Intuition Check — Do the Results Feel Right?
+
+### Profile 1: High-Energy Pop (Alex) — Mostly right
+
+`Sunrise City` at #1 is correct — it is the only pop/happy song and scores 3.97/4.00. `Gym Hero` at #2 makes sense — high energy, right genre. However `Concrete Jungle` (hip-hop) appearing at #5 purely on an energy match feels unintuitive. A hip-hop song with no genre or mood connection should not feel like a pop recommendation.
+
+### Profile 2: Chill Lofi (Sam) — Feels very right
+
+Top 3 are all lofi songs. `Library Rain` edges `Midnight Coding` by 0.01 points because its energy (0.35) is fractionally closer to the target (0.38) — a realistic distinction. `Coffee Shop Stories` (jazz) at #5 also feels natural since jazz and lofi genuinely overlap in mood.
+
+### Profile 3: Deep Intense Rock (Jordan) — Exposes the core problem
+
+`Storm Runner` hits a perfect 4.00/4.00 — correct. But look at the score cliff:
+
+```
+#1  Storm Runner    4.00   (genre + mood + energy all match)
+#2  Gym Hero        1.98   (only mood matches)
+#3  Concrete Jungle 0.94   (only energy)
+#4  Shattered Glass 0.94   (only energy)
+```
+
+The gap between #1 and #2 is 2.02 points. When only one song matches all three criteria, the system becomes a one-song recommender with filler. A rock fan would expect `Shattered Glass` (electronic, angry, energy=0.97) much higher — it feels like rock even if the genre label does not match.
+
+---
+
+## Why `Gym Hero` Keeps Appearing
+
+Across 7 profiles, `Gym Hero` appears in 5 of them. Reason:
+
+- High energy (0.93) scores well on proximity for ANY high-energy profile
+- `"intense"` mood fires for rock and metal profiles
+- `"pop"` genre fires for all pop profiles
+- Low acousticness means it never gets penalized
+
+It is the catalog's most versatile scorer. This confirms the warning: the dataset is too small and genre weight is too strong to provide real variety.
+
+---
+
+## Experiment: Weight Shift — Double Energy, Half Genre
+
+To test sensitivity, the weights were temporarily changed to:
+
+```python
+WEIGHTS = {
+    "genre":  1.0,   # halved from 2.0
+    "mood":   1.0,   # unchanged
+    "energy": 2.0,   # doubled from 1.0
+}
+# New max score: 4.0 (unchanged)
+```
+
+**What changed:** Energy now contributes up to 2.0 points (same as genre did before). Genre is no longer dominant — a perfect energy match can beat a genre match if mood also aligns.
+
+**Effect on Alex's profile (pop/happy/0.85):**
+
+| Rank | Original weights | Shifted weights |
+|---|---|---|
+| #1 | Sunrise City (genre+mood+energy) | Sunrise City (still wins — matches all three) |
+| #2 | Gym Hero (genre only) | Concrete Jungle (energy=0.85, exact match) |
+| #5 | Concrete Jungle (energy only) | Gym Hero drops — genre worth less |
+
+**Conclusion:** Halving genre weight reduces `Gym Hero`'s dominance and lets high-energy non-pop songs surface higher. The tradeoff is that genre identity matters less — a classical song with perfect energy could outrank a pop song with slightly off energy.
+
+---
+
 ## Data Flow Diagram
 
 ```mermaid
@@ -152,7 +217,14 @@ flowchart TD
 
 ### Sample output
 ![alt text](image.png)
-
+### System Evaluation
+![alt text](image-1.png)
+![alt text](image-2.png)
+![alt text](image-3.png)
+![alt text](image-4.png)
+![alt text](image-5.png)
+![alt text](image-6.png)
+![alt text](image-8.png)
 ---
 
 ## Getting Started

@@ -1,15 +1,22 @@
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 
-# Finalized scoring recipe:
-#   +2.0 for genre match
-#   +1.0 for mood match
-#   +up to 1.0 for energy similarity (1 - abs difference)
-# Max possible score: 4.0
+# Scoring weights — Experiment: Weight Shift
+#
+# Original recipe:
+#   genre=2.0, mood=1.0, energy=1.0  → max score 4.0
+#
+# Shifted recipe (active):
+#   genre halved, energy doubled — tests sensitivity to over-prioritising genre
+#   genre=1.0, mood=1.0, energy=2.0  → max score 4.0 (unchanged)
+#
+# Math check:
+#   max = WEIGHTS["genre"]*1 + WEIGHTS["mood"]*1 + WEIGHTS["energy"]*1.0
+#       = 1.0 + 1.0 + 2.0 = 4.0  ✓
 WEIGHTS: Dict[str, float] = {
-    "genre":  2.0,
-    "mood":   1.0,
-    "energy": 1.0,
+    "genre":  1.0,   # halved from 2.0
+    "mood":   1.0,   # unchanged
+    "energy": 2.0,   # doubled from 1.0
 }
 
 @dataclass
