@@ -148,6 +148,11 @@ flowchart TD
     O -->|slice top k| P([Top 5 Recommendations\nprinted in main.py])
 ```
 
+
+
+### Sample output
+![alt text](image.png)
+
 ---
 
 ## Getting Started
