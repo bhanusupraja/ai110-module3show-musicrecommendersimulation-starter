@@ -17,17 +17,136 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+### The Big Picture
 
-Some prompts to answer:
+Real-world platforms like Spotify don't just look at what you like — they look at what millions of people with similar taste like, and combine that with the actual sound of a song (its tempo, energy, mood) to make a prediction. It's crowd wisdom plus audio science working together.
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+This version keeps it simpler: it takes what a user tells us they prefer — their favorite genre, mood, and energy level — and finds songs from the catalog that best match those preferences. Every recommendation comes with a plain-English reason so you can see exactly why it was picked.
 
-You can include a simple diagram or bullet list if helpful.
+---
+
+### Step 1 — The Songs
+
+Each song in `data/songs.csv` is described by these features:
+
+- **genre** and **mood** — what kind of song it is (e.g. pop, happy)
+- **energy** — how intense it feels, from 0.0 (very calm) to 1.0 (very intense)
+- **tempo_bpm** — speed in beats per minute
+- **valence** — how positive or joyful it sounds (0.0 = sad, 1.0 = happy)
+- **danceability** and **acousticness** — rhythm strength and acoustic vs. electronic texture
+- **title**, **artist**, **id** — display only, not used for scoring
+
+---
+
+### Step 2 — The User Profile
+
+The user (Alex) tells the system what they like:
+
+- **favorite_genre** = `"pop"` — the genre they want
+- **favorite_mood** = `"happy"` — the mood they want
+- **target_energy** = `0.85` — they like high-energy music
+
+---
+
+### Step 3 — Scoring Every Song
+
+For each of the 18 songs, the system awards points based on how well it matches Alex:
+
+| Rule | Points |
+|---|---|
+| Genre matches (`"pop"`) | +2.0 |
+| Mood matches (`"happy"`) | +1.0 |
+| Energy is close to 0.85 | +0.0 to +1.0 |
+| **Max possible score** | **4.0** |
+
+The closer a song's energy is to the target, the more points it earns. An exact match gives the full +1.0.
+
+---
+
+### Step 4 — Ranking and Output
+
+Once every song has a score, the system sorts them from highest to lowest and returns the top 5. Each result is printed with its score and a reason:
+
+```
+Sunrise City - Score: 3.97
+Because: genre matches (pop) +2.0 | mood matches (happy) +1.0 | energy 0.82 vs target 0.85 (+0.97)
+```
+
+Songs that match genre AND mood AND energy float to the top. Songs that miss on all three sink to the bottom.
+
+---
+
+## Algorithm Recipe
+
+This is the exact rule the system uses to score every song:
+
+```
+1. Start with score = 0.0
+
+2. If the song's genre matches the user's favorite genre:
+       score += 2.0
+
+3. If the song's mood matches the user's favorite mood:
+       score += 1.0
+
+4. Calculate how close the song's energy is to the user's target:
+       score += 1.0 - abs(song.energy - target_energy)
+       (a perfect energy match adds 1.0, a total mismatch adds 0.0)
+
+5. The final score is a number between 0.0 and 4.0.
+   Higher = better match.
+
+6. Sort all 18 songs by score, highest first.
+   Return the top 5.
+```
+
+**Why these weights?**
+Genre gets the most points (2.0) because it is the strongest signal of who you are as a listener. Mood gets the second most (1.0) because it matters but changes with context. Energy is a continuous measure — it rewards songs that are close, not just exact matches.
+
+---
+
+## Potential Biases
+
+| Bias | Why it happens | Example |
+|---|---|---|
+| **Genre over-prioritization** | Genre is worth 2.0 points — double any other signal. A perfect mood + energy match (2.0 pts max) still loses to any genre match. | `Island Drift` (reggae, happy, energy=0.61) scores lower than `Gym Hero` (pop, intense, energy=0.93) for a pop/happy user, even though Island Drift matches mood. |
+| **Wrong-genre penalty is invisible** | All non-matching genres score 0 — there is no difference between "close genre" (indie pop) and "completely unrelated" (classical). | `Rooftop Lights` (indie pop) and `Moonlit Waltz` (classical) both get 0 genre points, despite indie pop being far closer to pop. |
+| **Energy bias toward active users** | Energy similarity rewards songs near the user's target. A user who prefers calm music (energy=0.2) will rarely see high-energy songs — even if they occasionally want something upbeat. | A chill user will never get `Gym Hero` in their top 5, even on days they want something energetic. |
+| **Mood is binary** | A song either matches the mood exactly or gets nothing. There is no partial credit for related moods. | `"uplifting"` and `"happy"` feel similar but the system treats them as completely different. |
+| **Small catalog bias** | With only 18 songs, some genres and moods have just one representative. The system has no choice but to recommend it regardless of quality. | There is only one classical song — `Moonlit Waltz` will always be last for high-energy users, and first for classical users with no alternatives. |
+
+---
+
+## Data Flow Diagram
+
+```mermaid
+flowchart TD
+    A([songs.csv]) -->|load_songs| B[List of 18 Song Dicts]
+    C([user_prefs\ngenre=pop, mood=happy\nenergy=0.85]) --> D
+
+    B -->|for each song| D[score_song\nuser_prefs, song]
+
+    D --> E{genre match?}
+    E -->|yes| F[+2.0]
+    E -->|no|  G[+0.0]
+
+    D --> H{mood match?}
+    H -->|yes| I[+1.0]
+    H -->|no|  J[+0.0]
+
+    D --> K[1 - abs\nsong.energy - 0.85]
+    K --> L[+0.0 to +1.0]
+
+    F & G --> M([score])
+    I & J --> M
+    L     --> M
+
+    M --> N[scored list\nsong, score, explanation]
+
+    N -->|repeat x18| N
+    N -->|sort descending| O[Ranked List]
+    O -->|slice top k| P([Top 5 Recommendations\nprinted in main.py])
+```
 
 ---
 
