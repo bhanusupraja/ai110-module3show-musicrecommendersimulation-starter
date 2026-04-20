@@ -5,30 +5,31 @@ Visualizes how a single song moves from the CSV file to the final ranked list.
 ```mermaid
 flowchart TD
     A([songs.csv]) -->|load_songs| B[List of 18 Song Dicts]
-    C([user_prefs\ngenre=pop, mood=happy\nenergy=0.85]) --> D
+    C([user_prefs: genre=pop mood=happy energy=0.85]) --> D
 
-    B -->|for each song| D[score_song\nuser_prefs, song]
+    B -->|for each song| D[score_song]
 
     D --> E{genre match?}
-    E -->|yes| F[+2.0]
-    E -->|no|  G[+0.0]
+    E -->|yes| F[score plus 1.0]
+    E -->|no| G[score plus 0.0]
 
     D --> H{mood match?}
-    H -->|yes| I[+1.0]
-    H -->|no|  J[+0.0]
+    H -->|yes| I[score plus 1.0]
+    H -->|no| J[score plus 0.0]
 
-    D --> K[1 - abs\nsong.energy - 0.85]
-    K --> L[+0.0 to +1.0]
+    D --> K[energy similarity]
+    K --> L[1 minus abs diff = 0.0 to 2.0]
 
-    F & G --> M([score])
-    I & J --> M
-    L     --> M
+    F --> M([total score 0.0 to 4.0])
+    G --> M
+    I --> M
+    J --> M
+    L --> M
 
-    M --> N[scored list\nsong, score, explanation]
-
+    M --> N[scored list: song + score + explanation]
     N -->|repeat x18| N
     N -->|sort descending| O[Ranked List]
-    O -->|slice top k| P([Top 5 Recommendations\nprinted in main.py])
+    O -->|slice top k| P([Top 5 Recommendations])
 ```
 
 ## Step-by-Step Breakdown
